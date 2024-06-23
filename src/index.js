@@ -77,7 +77,7 @@ const scrim = plugin(({ matchUtilities, addComponents, theme }) => {
 		matchUtilities(
 			{ [dir == 'DEFAULT' ? 'scrim' : `scrim-${dir}`]: value => mask(dir, directions[dir], value) },
 			{
-				values: theme('spacing'),
+				values: { ...theme('spacing'), full: '100%' },
 				type: 'length',
 				supportsNegativeValues: false,
 			}

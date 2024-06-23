@@ -1,10 +1,22 @@
 {
 	"name": "tailwindcss-scrim-gradients",
+	"author": "Liam Macann",
 	"version": "0.2.0",
 	"main": "src/index.js",
 	"types": "src/index.d.ts",
 	"license": "MIT",
-	"repository": "https://github.com/liam-macann/tailwindcss-scrim-gradients",
+	"keywords": [
+		"tailwind",
+		"tailwindcss",
+		"plugin"
+	],
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/liam-macann/tailwindcss-scrim-gradients.git"
+	},
+	"bugs": {
+		"url": "https://github.com/liam-macann/tailwindcss-scrim-gradients/issues"
+	},
 	"prettier": {
 		"printWidth": 100,
 		"semi": true,

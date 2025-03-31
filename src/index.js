@@ -39,9 +39,9 @@ const gradient = (direction, distance) => {
 
 //-----------------------------------------------------------------------------
 
-const scrim = plugin(({ matchUtilities, addComponents, theme }) => {
-	// Placing styles in component layer allows utility overrides with minimal output CSS
-	addComponents({
+const scrim = plugin(({ matchUtilities, addBase, theme }) => {
+	// Allow utility overrides (base layer allows raw CSS selector)
+	addBase({
 		'[class^="scrim-"], [class*=" scrim-"]': {
 			position: 'relative',
 			'&::after': {

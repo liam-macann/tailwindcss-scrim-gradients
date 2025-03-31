@@ -23,8 +23,9 @@ test('Base component styles are applied', async () => {
 	const result = await postcss([
 		tw({
 			plugins: [require('../')],
+			corePlugins: [],
 		}),
-	]).process('@tailwind components', { from: undefined });
+	]).process('@tailwind base', { from: undefined });
 
 	const css = result.css;
 

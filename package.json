@@ -1,7 +1,7 @@
 {
 	"name": "tailwindcss-scrim-gradients",
 	"author": "Liam Macann",
-	"version": "0.3.0",
+	"version": "0.3.1",
 	"main": "src/index.js",
 	"types": "src/index.d.ts",
 	"license": "MIT",

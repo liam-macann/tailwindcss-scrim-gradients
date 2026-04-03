@@ -1,7 +1,9 @@
-const postcss = require('postcss');
-const tw = require('tailwindcss');
+import postcss from 'postcss';
+import tw from 'tailwindcss';
+import { expect, test } from 'vitest';
+import plugin from './index';
 
-let baseComponent = `
+const baseComponent = `
 [class^="scrim-"], [class*=" scrim-"] {
     position: relative;
 }
@@ -22,7 +24,8 @@ let baseComponent = `
 test('Base component styles are applied', async () => {
 	const result = await postcss([
 		tw({
-			plugins: [require('../')],
+			content: [],
+			plugins: [plugin],
 			corePlugins: [],
 		}),
 	]).process('@tailwind base', { from: undefined });
@@ -36,7 +39,7 @@ test('Color variables and opacity modifiers function with extended theme', async
 	const result = await postcss([
 		tw({
 			content: [{ raw: 'scrim-orange-500 scrim-primary/20 scrim-secondary-500/10' }],
-			plugins: [require('../')],
+			plugins: [plugin],
 			theme: {
 				extend: {
 					colors: {
@@ -68,7 +71,7 @@ test('Default, edges, and shorthand axes are defined', async () => {
 	const result = await postcss([
 		tw({
 			content: [{ raw: 'scrim-t-20 scrim-x-5 scrim-1' }],
-			plugins: [require('../')],
+			plugins: [plugin],
 			theme: {
 				extend: {
 					colors: {
@@ -203,7 +206,7 @@ test('Zero dimension edges do not render pixel-width gradient', async () => {
 	const result = await postcss([
 		tw({
 			content: [{ raw: 'scrim-b-0' }],
-			plugins: [require('../')],
+			plugins: [plugin],
 			theme: {
 				extend: {
 					colors: {

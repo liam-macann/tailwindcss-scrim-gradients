@@ -1,26 +1,30 @@
-const plugin = require('tailwindcss/plugin');
+import plugin from 'tailwindcss/plugin';
+import type { CSSRuleObject } from 'tailwindcss/types/config';
 
-const flattenColorPalette = colors =>
+// Hacky workaround for edge cases involving opacity modifiers on custom colors
+type Color = string | ((...args: unknown[]) => string);
+type ColorPalette = { [key: string]: Color | ColorPalette };
+
+const flattenColorPalette = (colors?: ColorPalette): Record<string, Color> =>
 	Object.assign(
 		{},
 		...Object.entries(colors !== null && colors !== void 0 ? colors : {}).flatMap(
 			([color, values]) =>
-				typeof values == 'object' ?
+				typeof values === 'object' ?
 					Object.entries(flattenColorPalette(values)).map(([number, hex]) => ({
 						[color + (number === 'DEFAULT' ? '' : `-${number}`)]: hex,
 					}))
-				:	[
-						{
-							[`${color}`]: values,
-						},
-					]
+				:	[{ [`${color}`]: values }]
 		)
 	);
 
 //-----------------------------------------------------------------------------
 
+type CSSDirection = 'to right' | 'to left' | 'to top' | 'to bottom';
+type DirectionMapping = CSSDirection | Record<string, CSSDirection>;
+
 // Consumed recursively
-const directions = {
+const directions: Record<string, DirectionMapping> = {
 	DEFAULT: { l: 'to right', r: 'to left', b: 'to top', t: 'to bottom' },
 	x: { l: 'to right', r: 'to left' },
 	y: { b: 'to top', t: 'to bottom' },
@@ -28,12 +32,12 @@ const directions = {
 	t: 'to bottom',
 	l: 'to right',
 	r: 'to left',
-};
+} as const;
 
 // Smoooooth gradient
-const gradient = (direction, distance) => {
+const gradient = (direction: string, distance: string): string => {
 	// Prevent solid bar when attempting to hide scrim on edge
-	if (distance == '0px') return 'linear-gradient(transparent, transparent)';
+	if (distance === '0px') return 'linear-gradient(transparent, transparent)';
 	return `
 		linear-gradient( ${direction},
 		  black 0%,
@@ -63,7 +67,7 @@ const scrim = plugin(({ matchUtilities, addBase, theme }) => {
 			'&::after': {
 				content: '""',
 				position: 'absolute',
-				inset: 0,
+				inset: '0',
 				pointerEvents: 'none',
 				background: 'var(--tw-scrim-color, white)',
 				maskImage: `
@@ -77,12 +81,7 @@ const scrim = plugin(({ matchUtilities, addBase, theme }) => {
 	});
 
 	matchUtilities(
-		{
-			scrim: value => ({
-				// Hacky workaround for edge cases involving opacity modifiers on custom colors
-				'--tw-scrim-color': value instanceof Function ? value() : value,
-			}),
-		},
+		{ scrim: value => ({ '--tw-scrim-color': value instanceof Function ? value() : value }) },
 		{
 			values: flattenColorPalette(theme('colors')),
 			type: 'color',
@@ -91,9 +90,14 @@ const scrim = plugin(({ matchUtilities, addBase, theme }) => {
 
 	for (const dir in directions) {
 		matchUtilities(
-			{ [dir == 'DEFAULT' ? 'scrim' : `scrim-${dir}`]: value => mask(dir, directions[dir], value) },
 			{
-				values: { ...theme('spacing'), full: '100%' },
+				[dir === 'DEFAULT' ? 'scrim' : `scrim-${dir}`]: value => mask(dir, directions[dir], value),
+			},
+			{
+				values: {
+					...(theme('spacing') as Record<string, string>),
+					full: '100%',
+				},
 				type: 'length',
 				supportsNegativeValues: false,
 			}
@@ -101,10 +105,14 @@ const scrim = plugin(({ matchUtilities, addBase, theme }) => {
 	}
 });
 
-function mask(label, direction, distance) {
-	return typeof direction === 'string' ?
-			{ [`--tw-scrim-mask-${label}`]: gradient(direction, distance) }
-		:	Object.keys(direction).map(label => mask(label, direction[label], distance));
+function mask(label: string, direction: DirectionMapping, distance: string): CSSRuleObject {
+	if (typeof direction === 'string')
+		return { [`--tw-scrim-mask-${label}`]: gradient(direction, distance) };
+
+	return Object.keys(direction).reduce(
+		(acc, subLabel) => Object.assign(acc, mask(subLabel, direction[subLabel], distance)),
+		{}
+	);
 }
 
-module.exports = scrim;
+export default scrim;

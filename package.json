@@ -1,9 +1,10 @@
 {
 	"name": "tailwindcss-scrim-gradients",
 	"author": "Liam Macann",
-	"version": "0.3.1",
-	"main": "src/index.js",
-	"types": "src/index.d.ts",
+	"version": "0.3.2",
+	"source": "src/index.ts",
+	"main": "dist/index.cjs",
+	"types": "dist/index.d.cts",
 	"license": "MIT",
 	"keywords": [
 		"tailwind",
@@ -27,14 +28,18 @@
 		"experimentalTernaries": true
 	},
 	"scripts": {
-		"test": "jest"
+		"test": "vitest run",
+		"build": "tsdown src/index.ts --format cjs --dts",
+		"prepublishOnly": "npm run build"
 	},
 	"peerDependencies": {
 		"tailwindcss": "^3.0.0 || ^4.0.0"
 	},
 	"devDependencies": {
-		"jest": "^27.2.4",
 		"postcss": "^8.2.4",
-		"tailwindcss": "^3.0.0"
+		"tailwindcss": "^3.0.0",
+		"tsdown": "^0.21.7",
+		"typescript": "^5.9.3",
+		"vitest": "^4.1.2"
 	}
 }

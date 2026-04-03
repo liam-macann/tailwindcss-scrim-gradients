@@ -94,11 +94,11 @@ const scrim = plugin(({ matchUtilities, addBase, theme }) => {
 				[dir === 'DEFAULT' ? 'scrim' : `scrim-${dir}`]: value => mask(dir, directions[dir], value),
 			},
 			{
-				values: {
-					...(theme('spacing') as Record<string, string>),
-					full: '100%',
-				},
-				type: 'length',
+				values: (() => {
+					const { auto, ...values } = theme('width') as Record<string, string>;
+					return values;
+				})(),
+				type: ['length', 'percentage'],
 				supportsNegativeValues: false,
 			}
 		);

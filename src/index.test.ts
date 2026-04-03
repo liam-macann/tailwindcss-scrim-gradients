@@ -17,7 +17,8 @@ const generateCSS = async (utilities: string, options?: Partial<Config>) =>
 test('Base component styles are applied', async () => {
 	const { css } = await postcss([
 		tw({
-			content: [],
+			// Suppress missing content warning
+			content: [{ raw: '' }],
 			plugins: [plugin],
 			corePlugins: [],
 		}),
@@ -100,6 +101,16 @@ test('Length and color utilities compose with extended theme', async () => {
 	expect(css).toContain('--tw-scrim-color: rgb(20,60,80)');
 });
 
+describe('Percentage lengths produce valid utility', () => {
+	test.for([
+		['full', '100%'],
+		['1/4', '25%'],
+	])('Length: %s', async ([label, length]) => {
+		const css = await generateCSS(`scrim-l-${label}`);
+		expect(css).toContain(length);
+	});
+});
+
 describe('Arbitrary color values are permitted', () => {
 	test.for(['#cccccc', '#0af', 'rgba(30, 10, 100, 0.3)'])('Color: %s', async col => {
 		const css = await generateCSS(`scrim-[${col.replaceAll(' ', '_')}]`);
@@ -108,7 +119,7 @@ describe('Arbitrary color values are permitted', () => {
 });
 
 describe('Arbitrary lengths are permitted', () => {
-	test.for(['20rem', '8.5px'])('Length: %s', async length => {
+	test.for(['20rem', '8.5px', '23%'])('Length: %s', async length => {
 		const css = await generateCSS(`scrim-t-[${length}]`);
 		expect(css).toContain(length);
 	});
@@ -126,6 +137,9 @@ test('Invalid utilities produce no output', async () =>
 
 test('Negative lengths produce no output', async () =>
 	expect(await generateCSS('-scrim-b-12 -scrim-4')).toBe(''));
+
+test('Auto length produces no output', async () =>
+	expect(await generateCSS('scrim-b-auto')).toBe(''));
 
 describe('Zero dimension edges do not render pixel-width gradient', () => {
 	const maskVar = (edge: string) =>

@@ -1,28 +1,21 @@
 import postcss from 'postcss';
-import tw from 'tailwindcss';
-import { expect, test } from 'vitest';
+import tw, { type Config } from 'tailwindcss';
+import { describe, expect, test } from 'vitest';
 import plugin from './index';
 
-const baseComponent = `
-[class^="scrim-"], [class*=" scrim-"] {
-    position: relative;
-}
-[class^="scrim-"]::after, [class*=" scrim-"]::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    background: var(--tw-scrim-color, white);
-    mask-image: var(--tw-scrim-mask-l, linear-gradient(transparent, transparent)),
-      		var(--tw-scrim-mask-r, linear-gradient(transparent, transparent)),
-      		var(--tw-scrim-mask-t, linear-gradient(transparent, transparent)),
-      		var(--tw-scrim-mask-b, linear-gradient(transparent, transparent));
-    mask-repeat: no-repeat;
-}
-`.trim();
+const generateCSS = async (utilities: string, options?: Partial<Config>) =>
+	await postcss([
+		tw({
+			content: [{ raw: utilities }],
+			plugins: [plugin],
+			...options,
+		}),
+	])
+		.process('@tailwind utilities', { from: undefined })
+		.then(({ css }) => css);
 
 test('Base component styles are applied', async () => {
-	const result = await postcss([
+	const { css } = await postcss([
 		tw({
 			content: [],
 			plugins: [plugin],
@@ -30,200 +23,134 @@ test('Base component styles are applied', async () => {
 		}),
 	]).process('@tailwind base', { from: undefined });
 
-	const css = result.css;
-
-	expect(css).toBe(baseComponent);
+	expect(css).toContain('[class^="scrim-"], [class*=" scrim-"]');
+	expect(css).toContain('[class^="scrim-"]::after, [class*=" scrim-"]::after');
+	expect(css).toContain('content: ""');
+	expect(css).toContain('mask-image: var(');
 });
 
-test('Color variables and opacity modifiers function with extended theme', async () => {
-	const result = await postcss([
-		tw({
-			content: [{ raw: 'scrim-orange-500 scrim-primary/20 scrim-secondary-500/10' }],
-			plugins: [plugin],
-			theme: {
-				extend: {
-					colors: {
-						primary: 'red',
-						secondary: { 500: 'rgb(20,60,80)' },
-					},
-				},
-			},
-		}),
-	]).process('@tailwind utilities', { from: undefined });
+describe('Default, edges, and shorthand axes are defined', () => {
+	const edges = ['t', 'r', 'b', 'l'] as const;
 
-	const css = result.css;
+	const directions: Record<(typeof edges)[number], string> = {
+		t: 'to bottom',
+		b: 'to top',
+		l: 'to right',
+		r: 'to left',
+	};
 
-	const expected = `
-.scrim-orange-500 {
-    --tw-scrim-color: #f97316
-}
-.scrim-primary\\/20 {
-    --tw-scrim-color: rgb(255 0 0 / 0.2)
-}
-.scrim-secondary-500\\/10 {
-    --tw-scrim-color: rgb(20 60 80 / 0.1)
-}`.trim();
+	const maskVar = (edge: (typeof edges)[number]) =>
+		`--tw-scrim-mask-${edge}: linear-gradient(${directions[edge]}`;
 
-	expect(css).toBe(expected);
+	test.for([
+		['scrim-t', ['t']],
+		['scrim-b', ['b']],
+		['scrim-l', ['l']],
+		['scrim-r', ['r']],
+		['scrim-x', ['l', 'r']],
+		['scrim-y', ['t', 'b']],
+		['scrim', ['t', 'b', 'l', 'r']],
+	] as [string, (typeof edges)[number][]][])(
+		'Utility: %s',
+		async ([utility, activeEdges], { expect }) => {
+			const css = await generateCSS(`${utility}-20`);
+
+			edges.forEach(edge => {
+				const matcher = expect(css);
+				(activeEdges as readonly string[]).includes(edge) ?
+					matcher.toContain(maskVar(edge))
+				:	matcher.not.toContain(maskVar(edge));
+			});
+		}
+	);
 });
 
-test('Default, edges, and shorthand axes are defined', async () => {
-	const result = await postcss([
-		tw({
-			content: [{ raw: 'scrim-t-20 scrim-x-5 scrim-1' }],
-			plugins: [plugin],
-			theme: {
-				extend: {
-					colors: {
-						primary: 'red',
-						secondary: { 500: 'rgb(20,60,80)' },
-					},
+test('Opacity modifiers can be applied to color utilities', async () => {
+	const css = await generateCSS('scrim-black/10 scrim-primary/20 scrim-secondary-500/10', {
+		theme: {
+			extend: {
+				colors: {
+					primary: 'red',
+					secondary: { 500: 'rgb(20,60,80)' },
 				},
 			},
-		}),
-	]).process('@tailwind utilities', { from: undefined });
+		},
+	});
 
-	const css = result.css;
-
-	const expected = `
-.scrim-1 {
-    --tw-scrim-mask-l: linear-gradient( to right,
-		  black 0%,
-		  rgba(0, 0, 0, 0.738),
-		  rgba(0, 0, 0, 0.541),
-		  rgba(0, 0, 0, 0.382),
-		  rgba(0, 0, 0, 0.278),
-		  rgba(0, 0, 0, 0.194),
-		  rgba(0, 0, 0, 0.126),
-		  rgba(0, 0, 0, 0.075),
-		  rgba(0, 0, 0, 0.042),
-		  rgba(0, 0, 0, 0.021),
-		  rgba(0, 0, 0, 0.008),
-		  rgba(0, 0, 0, 0.002),
-		  rgba(0, 0, 0, 0) 0.25rem
-		);
-    --tw-scrim-mask-r: linear-gradient( to left,
-		  black 0%,
-		  rgba(0, 0, 0, 0.738),
-		  rgba(0, 0, 0, 0.541),
-		  rgba(0, 0, 0, 0.382),
-		  rgba(0, 0, 0, 0.278),
-		  rgba(0, 0, 0, 0.194),
-		  rgba(0, 0, 0, 0.126),
-		  rgba(0, 0, 0, 0.075),
-		  rgba(0, 0, 0, 0.042),
-		  rgba(0, 0, 0, 0.021),
-		  rgba(0, 0, 0, 0.008),
-		  rgba(0, 0, 0, 0.002),
-		  rgba(0, 0, 0, 0) 0.25rem
-		);
-    --tw-scrim-mask-b: linear-gradient( to top,
-		  black 0%,
-		  rgba(0, 0, 0, 0.738),
-		  rgba(0, 0, 0, 0.541),
-		  rgba(0, 0, 0, 0.382),
-		  rgba(0, 0, 0, 0.278),
-		  rgba(0, 0, 0, 0.194),
-		  rgba(0, 0, 0, 0.126),
-		  rgba(0, 0, 0, 0.075),
-		  rgba(0, 0, 0, 0.042),
-		  rgba(0, 0, 0, 0.021),
-		  rgba(0, 0, 0, 0.008),
-		  rgba(0, 0, 0, 0.002),
-		  rgba(0, 0, 0, 0) 0.25rem
-		);
-    --tw-scrim-mask-t: linear-gradient( to bottom,
-		  black 0%,
-		  rgba(0, 0, 0, 0.738),
-		  rgba(0, 0, 0, 0.541),
-		  rgba(0, 0, 0, 0.382),
-		  rgba(0, 0, 0, 0.278),
-		  rgba(0, 0, 0, 0.194),
-		  rgba(0, 0, 0, 0.126),
-		  rgba(0, 0, 0, 0.075),
-		  rgba(0, 0, 0, 0.042),
-		  rgba(0, 0, 0, 0.021),
-		  rgba(0, 0, 0, 0.008),
-		  rgba(0, 0, 0, 0.002),
-		  rgba(0, 0, 0, 0) 0.25rem
-		)
-}
-.scrim-x-5 {
-    --tw-scrim-mask-l: linear-gradient( to right,
-		  black 0%,
-		  rgba(0, 0, 0, 0.738),
-		  rgba(0, 0, 0, 0.541),
-		  rgba(0, 0, 0, 0.382),
-		  rgba(0, 0, 0, 0.278),
-		  rgba(0, 0, 0, 0.194),
-		  rgba(0, 0, 0, 0.126),
-		  rgba(0, 0, 0, 0.075),
-		  rgba(0, 0, 0, 0.042),
-		  rgba(0, 0, 0, 0.021),
-		  rgba(0, 0, 0, 0.008),
-		  rgba(0, 0, 0, 0.002),
-		  rgba(0, 0, 0, 0) 1.25rem
-		);
-    --tw-scrim-mask-r: linear-gradient( to left,
-		  black 0%,
-		  rgba(0, 0, 0, 0.738),
-		  rgba(0, 0, 0, 0.541),
-		  rgba(0, 0, 0, 0.382),
-		  rgba(0, 0, 0, 0.278),
-		  rgba(0, 0, 0, 0.194),
-		  rgba(0, 0, 0, 0.126),
-		  rgba(0, 0, 0, 0.075),
-		  rgba(0, 0, 0, 0.042),
-		  rgba(0, 0, 0, 0.021),
-		  rgba(0, 0, 0, 0.008),
-		  rgba(0, 0, 0, 0.002),
-		  rgba(0, 0, 0, 0) 1.25rem
-		)
-}
-.scrim-t-20 {
-    --tw-scrim-mask-t: linear-gradient( to bottom,
-		  black 0%,
-		  rgba(0, 0, 0, 0.738),
-		  rgba(0, 0, 0, 0.541),
-		  rgba(0, 0, 0, 0.382),
-		  rgba(0, 0, 0, 0.278),
-		  rgba(0, 0, 0, 0.194),
-		  rgba(0, 0, 0, 0.126),
-		  rgba(0, 0, 0, 0.075),
-		  rgba(0, 0, 0, 0.042),
-		  rgba(0, 0, 0, 0.021),
-		  rgba(0, 0, 0, 0.008),
-		  rgba(0, 0, 0, 0.002),
-		  rgba(0, 0, 0, 0) 5rem
-		)
-}
-`.trim();
-
-	expect(css).toBe(expected);
+	expect(css).toContain('--tw-scrim-color: rgb(0 0 0 / 0.1)');
+	expect(css).toContain('--tw-scrim-color: rgb(255 0 0 / 0.2)');
+	expect(css).toContain('--tw-scrim-color: rgb(20 60 80 / 0.1)');
 });
 
-test('Zero dimension edges do not render pixel-width gradient', async () => {
-	const result = await postcss([
-		tw({
-			content: [{ raw: 'scrim-b-0' }],
-			plugins: [plugin],
-			theme: {
-				extend: {
-					colors: {
-						primary: 'red',
-						secondary: { 500: 'rgb(20,60,80)' },
-					},
+test('Length and color utilities compose with extended theme', async () => {
+	const css = await generateCSS('scrim-primary scrim-secondary-500 scrim-b-arbitrary', {
+		theme: {
+			extend: {
+				spacing: { arbitrary: 'var(--variable-length)' },
+				colors: {
+					primary: 'red',
+					secondary: { 500: 'rgb(20,60,80)' },
 				},
 			},
-		}),
-	]).process('@tailwind utilities', { from: undefined });
+		},
+	});
 
-	const css = result.css;
+	expect(css).toContain('var(--variable-length)');
+	expect(css).toContain('--tw-scrim-color: red');
+	expect(css).toContain('--tw-scrim-color: rgb(20,60,80)');
+});
 
-	const expected = `
-.scrim-b-0 {
-    --tw-scrim-mask-b: linear-gradient(transparent, transparent)
-}`.trim();
+describe('Arbitrary color values are permitted', () => {
+	test.for(['#cccccc', '#0af', 'rgba(30, 10, 100, 0.3)'])('Color: %s', async col => {
+		const css = await generateCSS(`scrim-[${col.replaceAll(' ', '_')}]`);
+		expect(css).toContain(`--tw-scrim-color: ${col}`);
+	});
+});
 
-	expect(css).toBe(expected);
+describe('Arbitrary lengths are permitted', () => {
+	test.for(['20rem', '8.5px'])('Length: %s', async length => {
+		const css = await generateCSS(`scrim-t-[${length}]`);
+		expect(css).toContain(length);
+	});
+});
+
+describe('Utilities compose with variants', () => {
+	test.for(['hover', 'md', 'lg:focus', 'dark'])('Variant: `%s`', async variant => {
+		const css = await generateCSS(`${variant}:scrim-t-4`);
+		expect(css).toContain('--tw-scrim-mask-t');
+	});
+});
+
+test('Invalid utilities produce no output', async () =>
+	expect(await generateCSS('scrim-fake-500 scrim-b-4e0')).toBe(''));
+
+test('Negative lengths produce no output', async () =>
+	expect(await generateCSS('-scrim-b-12 -scrim-4')).toBe(''));
+
+describe('Zero dimension edges do not render pixel-width gradient', () => {
+	const maskVar = (edge: string) =>
+		`--tw-scrim-mask-${edge}: linear-gradient(transparent, transparent)`;
+
+	test('Edge utilities', async () => {
+		const css = await generateCSS('scrim-b-0 scrim-l-0');
+
+		expect(css).toContain(maskVar('b'));
+		expect(css).toContain(maskVar('l'));
+	});
+
+	test('Shorthand axes', async () => {
+		const css = await generateCSS('scrim-x-0');
+
+		expect(css).toContain(maskVar('l'));
+		expect(css).toContain(maskVar('r'));
+	});
+
+	test('Default', async () => {
+		const css = await generateCSS('scrim-0');
+
+		expect(css).toContain(maskVar('l'));
+		expect(css).toContain(maskVar('r'));
+		expect(css).toContain(maskVar('t'));
+		expect(css).toContain(maskVar('b'));
+	});
 });

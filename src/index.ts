@@ -39,7 +39,7 @@ const gradient = (direction: string, distance: string): string => {
 	// Prevent solid bar when attempting to hide scrim on edge
 	if (distance === '0px') return 'linear-gradient(transparent, transparent)';
 	return `
-		linear-gradient( ${direction},
+		linear-gradient(${direction},
 		  black 0%,
 		  rgba(0, 0, 0, 0.738),
 		  rgba(0, 0, 0, 0.541),

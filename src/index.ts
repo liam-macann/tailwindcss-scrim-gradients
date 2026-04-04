@@ -18,6 +18,16 @@ const flattenColorPalette = (colors?: ColorPalette): Record<string, Color> =>
 		)
 	);
 
+/** Returns the shallow intersection of two objects (comparing by reference) */
+const intersection = <T extends Record<string, unknown>>(a: T, b: T) =>
+	Object.keys(a).reduce(
+		(acc, key) => {
+			if (a[key] === b[key]) acc[key] = a[key];
+			return acc;
+		},
+		{} as Record<string, unknown>
+	) as Partial<T>;
+
 //-----------------------------------------------------------------------------
 
 type CSSDirection = 'to right' | 'to left' | 'to top' | 'to bottom';
@@ -89,14 +99,36 @@ const scrim = plugin(({ matchUtilities, addBase, theme }) => {
 	);
 
 	for (const dir in directions) {
+		const isVertical = ['t', 'b', 'y'].includes(dir);
+		const isHorizontal = ['l', 'r', 'x'].includes(dir);
+
 		matchUtilities(
 			{
 				[dir === 'DEFAULT' ? 'scrim' : `scrim-${dir}`]: value => mask(dir, directions[dir], value),
 			},
 			{
 				values: (() => {
-					const { auto, ...values } = theme('width') as Record<string, string>;
-					return values;
+					const spacing: Record<string, string> =
+						isVertical ? theme('height')
+						: isHorizontal ? theme('width')
+							// DEFAULT : allow only values identical in both scale
+							// ie. scrim-x-screen → 100vw
+							//     scrim-y-screen → 100vh
+							//     scrim-screen → undefined
+						: (intersection(theme('width'), theme('height')) as Record<string, string>);
+
+					// Discard keywords incompatible with pseudo-element mask
+					const { auto, min, max, fit, ...values } = spacing;
+
+					// Allow these keywords to be included if default values are overridden
+					const keywords: Record<string, string> = {};
+
+					if (auto !== 'auto') keywords.auto = auto;
+					if (min !== 'min-content') keywords.min = min;
+					if (max !== 'max-content') keywords.max = max;
+					if (fit !== 'fit-content') keywords.fit = fit;
+
+					return { ...values, ...keywords };
 				})(),
 				type: ['length', 'percentage'],
 				supportsNegativeValues: false,

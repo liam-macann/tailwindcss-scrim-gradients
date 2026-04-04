@@ -111,6 +111,63 @@ describe('Percentage lengths produce valid utility', () => {
 	});
 });
 
+describe('Horizontal and vertical axes diverge spacing scales', () => {
+	test('Horizontal axis does not use height values', async () => {
+		const css = await generateCSS('scrim-l-test scrim-r-test scrim-x-test', {
+			theme: {
+				width: { test: '97%' },
+				height: { test: '18px' },
+			},
+		});
+
+		expect(css).toContain('97%');
+		expect(css).not.toContain('18px');
+	});
+
+	test('Vertical axis does not use width values', async () => {
+		const css = await generateCSS('scrim-t-test scrim-b-test scrim-y-test', {
+			theme: {
+				width: { test: '97%' },
+				height: { test: '18px' },
+			},
+		});
+
+		expect(css).not.toContain('97%');
+		expect(css).toContain('18px');
+	});
+
+	describe('DEFAULT shorthand uses intersection of height and width values', () => {
+		test('Non-equivalent values are excluded', async () => {
+			const css = await generateCSS('scrim-test scrim-screen', {
+				theme: {
+					extend: {
+						width: { test: '97%' },
+						height: { test: '18px' },
+					},
+				},
+			});
+
+			expect(css).toBe('');
+		});
+
+		test('Equivalent values are permitted', async () => {
+			const css = await generateCSS('scrim-test scrim-screen scrim-1/2', {
+				theme: {
+					extend: {
+						width: { test: '97%' },
+						height: { test: '97%' },
+					},
+				},
+			});
+
+			expect(css).toContain('97%');
+			expect(css).toContain('50%');
+			expect(css).not.toContain('100vw');
+			expect(css).not.toContain('100vh');
+		});
+	});
+});
+
 describe('Arbitrary color values are permitted', () => {
 	test.for(['#cccccc', '#0af', 'rgba(30, 10, 100, 0.3)'])('Color: %s', async col => {
 		const css = await generateCSS(`scrim-[${col.replaceAll(' ', '_')}]`);
@@ -138,8 +195,34 @@ test('Invalid utilities produce no output', async () =>
 test('Negative lengths produce no output', async () =>
 	expect(await generateCSS('-scrim-b-12 -scrim-4')).toBe(''));
 
-test('Auto length produces no output', async () =>
-	expect(await generateCSS('scrim-b-auto')).toBe(''));
+describe('Content-based keyword dimensions are handled', () => {
+	describe('Invalid keyword dimensions produce no output', () => {
+		test.for(['auto', 'fit', 'max', 'min'])('Keyword: %s', async keyword => {
+			const css = await generateCSS(`scrim-l-${keyword} scrim-y-${keyword} scrim-${keyword}`);
+
+			// Checks that there is no `undefined` leak
+			const resetTheme = await generateCSS(
+				`scrim-l-${keyword} scrim-y-${keyword} scrim-${keyword}`,
+				{
+					theme: { width: {}, height: {} },
+				}
+			);
+
+			expect(css).toBe('');
+			expect(resetTheme).toBe('');
+		});
+	});
+
+	describe('Allow custom values to override keywords', () => {
+		test.for(['auto', 'fit', 'max', 'min'])('Keyword: %s', async keyword => {
+			const css = await generateCSS(`scrim-l-${keyword} scrim-y-${keyword} scrim-${keyword}`, {
+				theme: { width: { [keyword]: '194px' }, height: { [keyword]: '194px' } },
+			});
+
+			expect(css).toContain('194px');
+		});
+	});
+});
 
 describe('Zero dimension edges do not render pixel-width gradient', () => {
 	const maskVar = (edge: string) =>

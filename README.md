@@ -20,7 +20,7 @@ Gradient overlays (scrims) are a pattern employed to preserve legibility of text
     <picture>
       <source media="(prefers-color-scheme: dark)" srcset="https://github.com/user-attachments/assets/f8b0947d-4bb7-4b0b-9f43-07d12e09f1ee">
       <source media="(prefers-color-scheme: light)" srcset="https://github.com/user-attachments/assets/facc533f-d409-48fd-bde0-8735ee68172d">
-      <img width="671" height="328" alt="Comparison graphic of eased and uneased gradient" src="https://github.com/user-attachments/assets/facc533f-d409-48fd-bde0-8735ee68172d" />
+      <img width="671" alt="Comparison graphic of eased and uneased gradient" src="https://github.com/user-attachments/assets/facc533f-d409-48fd-bde0-8735ee68172d" />
     </picture>
   </a>
 </p>

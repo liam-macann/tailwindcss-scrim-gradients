@@ -88,6 +88,14 @@ const scrim = plugin(({ matchUtilities, addBase, theme }) => {
 				maskRepeat: 'no-repeat',
 			},
 		},
+		// Prevents mask variables from being inherited
+		// (`:where()` specificity is 0, and can be overridden with utilities)
+		':where([class^="scrim-"], [class*=" scrim-"])': {
+			'--tw-scrim-mask-l': 'initial',
+			'--tw-scrim-mask-r': 'initial',
+			'--tw-scrim-mask-t': 'initial',
+			'--tw-scrim-mask-b': 'initial',
+		},
 	});
 
 	matchUtilities(

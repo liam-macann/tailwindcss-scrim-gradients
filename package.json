@@ -9,7 +9,12 @@
 	"keywords": [
 		"tailwind",
 		"tailwindcss",
+		"gradients",
+		"scrim",
 		"plugin"
+	],
+	"files": [
+		"/dist"
 	],
 	"repository": {
 		"type": "git",

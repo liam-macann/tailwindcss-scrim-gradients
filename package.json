@@ -1,5 +1,6 @@
 {
 	"name": "tailwindcss-scrim-gradients",
+	"description": "Generate beautiful gradient overlays with composable utilities.",
 	"author": "Liam Macann",
 	"version": "0.4.2",
 	"source": "src/index.ts",

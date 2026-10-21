@@ -70,6 +70,33 @@ test('Opacity modifiers can be applied to color utilities', async () => {
 	}
 });
 
+test('Color functions are resolved', async () => {
+	// v3.0-style color function (both Tailwind versions can still pass these through)
+	const fn = (() => 'rgb(1 2 3)') as unknown as string;
+
+	const css = await generateCSS('scrim-fn scrim-nested-500', {
+		theme: { extend: { colors: { fn, nested: { 500: fn } } } },
+	});
+
+	expect(css).not.toContain('=>');
+	expect(css.match(/--tw-scrim-color: rgb\(1 2 3\)/g)).toHaveLength(2);
+});
+
+test.skipIf(version !== 3)('Opacity modifiers can be applied to color functions', async () => {
+	// Supporting this in v4 would require version sniffing, and is exceedingly uncommon
+
+	const fn = ({ opacityValue }: { opacityValue?: string }) =>
+		opacityValue ? `rgb(1 2 3 / ${opacityValue})` : 'rgb(1 2 3)';
+
+	const css = await generateCSS('scrim-fn/50', {
+		// Type declaration omits supported legacy color callbacks
+		theme: { extend: { colors: { fn: fn as unknown as string } } },
+	});
+
+	expect(css).not.toContain('=>');
+	expect(css).toContain('--tw-scrim-color: rgb(1 2 3 / 0.5)');
+});
+
 test('Length and color utilities compose with extended theme', async () => {
 	const css = await generateCSS('scrim-primary scrim-secondary-500 scrim-b-arbitrary', {
 		theme: {

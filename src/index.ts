@@ -4,7 +4,7 @@ import plugin from 'tailwindcss/plugin';
 type CSSRuleObject = { [key: string]: string | CSSRuleObject };
 
 // Tailwind color definition can return functions (eg. for opacity modifiers on custom colors)
-// This was common prior to v3.1, and matches internally generated <alpha-value> callbacks
+// This was common prior to v3.1, and matched internally generated <alpha-value> callbacks post-3.1
 type Color = string | ((options: Record<string, never>) => string);
 type ColorPalette = { [key: string]: Color | ColorPalette };
 

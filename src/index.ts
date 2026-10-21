@@ -51,8 +51,8 @@ const directions: Record<string, DirectionMapping> = {
 
 // Smoooooth gradient
 const gradient = (direction: string, distance: string): string => {
-	// Prevent solid bar when attempting to hide scrim on edge
-	if (distance === '0px') return 'linear-gradient(transparent, transparent)';
+	// Prevent solid bar when attempting to hide scrim on edge. parseFloat() ignores unit, and matches any 0 value
+	if (parseFloat(distance) <= 0) return 'linear-gradient(transparent, transparent)';
 	return `
 		linear-gradient(${direction},
 		  black 0%,

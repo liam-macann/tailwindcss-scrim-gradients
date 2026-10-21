@@ -190,7 +190,7 @@ describe('Arbitrary color values are permitted', () => {
 });
 
 describe('Arbitrary lengths are permitted', () => {
-	test.for(['20rem', '8.5px', '23%'])('Length: %s', async length => {
+	test.for(['20rem', '8.5px', '23%', '0.1px'])('Length: %s', async length => {
 		const css = await generateCSS(`scrim-t-[${length}]`);
 		expect(css).toContain(length);
 	});
@@ -262,6 +262,21 @@ describe('Zero dimension edges do not render pixel-width gradient', () => {
 		expect(css).toContain(maskVar('l'));
 		expect(css).toContain(maskVar('r'));
 		expect(css).toContain(maskVar('t'));
+		expect(css).toContain(maskVar('b'));
+	});
+
+	const zeroes = ['0', '0rem', '0%', '0.0px', '-10px'];
+
+	test.for(zeroes)('Arbitrary length: %s', async length => {
+		const css = await generateCSS(`scrim-b-[${length}]`);
+
+		// v4 infers unitless arbitrary values as numbers, not lengths
+		if (version === 4 && length === '0') expect(css).toBe('');
+		else expect(css).toContain(maskVar('b'));
+	});
+
+	test.for(zeroes)('Configured length: %s', async length => {
+		const css = await generateCSS('scrim-b-none', { theme: { height: { none: length } } });
 		expect(css).toContain(maskVar('b'));
 	});
 });

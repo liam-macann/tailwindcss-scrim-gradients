@@ -138,10 +138,10 @@ const scrim: ReturnType<typeof plugin> = plugin(({ matchUtilities, addBase, them
 					// Allow these keywords to be included if default values are overridden
 					const keywords: Record<string, string> = {};
 
-					if (auto !== 'auto') keywords.auto = auto;
-					if (min !== 'min-content') keywords.min = min;
-					if (max !== 'max-content') keywords.max = max;
-					if (fit !== 'fit-content') keywords.fit = fit;
+					if (auto !== undefined && auto !== 'auto') keywords.auto = auto;
+					if (min !== undefined && min !== 'min-content') keywords.min = min;
+					if (max !== undefined && max !== 'max-content') keywords.max = max;
+					if (fit !== undefined && fit !== 'fit-content') keywords.fit = fit;
 
 					return { ...values, ...keywords };
 				})(),

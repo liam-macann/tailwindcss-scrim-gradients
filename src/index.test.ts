@@ -344,3 +344,56 @@ describe('Zero dimension edges do not render pixel-width gradient', () => {
 		expect(css).toContain(maskVar('b'));
 	});
 });
+
+describe.skipIf(major !== 4)('Dynamic numeric spacing', () => {
+	test('Numeric distances respect the theme prefix', async () => {
+		const css = await compileStyles(
+			'@theme prefix(tw) { --spacing: 0.5rem; } @tailwind utilities;',
+			'tw:scrim-b-13 tw:scrim-x-13 tw:scrim-13'
+		);
+
+		expect(css).toContain('--tw-spacing: 0.5rem');
+		expect(css).toContain('calc(var(--tw-spacing) * 13)');
+		expect(css).not.toContain('var(--spacing)');
+	});
+
+	test('Numeric distances use the spacing variable', async () => {
+		const css = await generateCSS('scrim-b-13 scrim-x-2.75 scrim-4.5');
+
+		['13', '2.75', '4.5'].forEach(value => {
+			expect(css).toContain(`calc(var(--spacing) * ${value})`);
+		});
+	});
+
+	test('Numeric distances off the spacing grid produce no output', async () =>
+		expect(await generateCSS('scrim-b-2.1')).toBe(''));
+
+	test('Custom spacing units replace generated scale values', async () => {
+		// theme('spacing') is the string '0.5rem', which v4 spreads into the scales by character (4 → 'e')
+		const css = await compileStyles(
+			'@theme { --spacing: 0.5rem; } @tailwind utilities;',
+			'scrim-b-4'
+		);
+
+		expect(css).toContain('calc(var(--spacing) * 4)');
+	});
+
+	test('Configured numeric values take precedence', async () => {
+		const css = await generateCSS('scrim-b-4 scrim-l-4 scrim-4', {
+			theme: { height: { 4: '7rem' }, width: { 4: '9rem' } },
+		});
+
+		expect(css).toContain('rgba(0, 0, 0, 0) 7rem');
+		expect(css).toContain('rgba(0, 0, 0, 0) 9rem');
+		expect(css).not.toContain('calc(var(--spacing) * 4)');
+	});
+
+	describe('Fractional distances', () => {
+		test.for(['scrim-b-3/7', 'scrim-x-3/7', 'scrim-3/7'])('Utility: %s', async utility =>
+			expect(await generateCSS(utility)).toContain('rgba(0, 0, 0, 0) calc(3 / 7 * 100%)')
+		);
+
+		test('Fractions of non-positive integers produce no output', async () =>
+			expect(await generateCSS('scrim-b-0/4 scrim-b-3/0 scrim-b-1.5/4 scrim-b-03/7')).toBe(''));
+	});
+});

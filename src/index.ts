@@ -1,3 +1,4 @@
+import defaultTheme from 'tailwindcss/defaultTheme';
 import plugin from 'tailwindcss/plugin';
 
 // Stable CSS-in-JS type across Tailwind versions
@@ -117,6 +118,41 @@ const scrim: ReturnType<typeof plugin> = plugin(({ matchUtilities, addBase, them
 		}
 	);
 
+	// The multiplier --spacing set in Tailwind v4
+	const spacingUnit = theme('--spacing');
+
+	/** Tailwind CSS v4 dynamic values support 0.25 increments */
+	const isMultiplier = (value: string) =>
+		Number(value) >= 0 && Number(value) % 0.25 === 0 && String(Number(value)) === value;
+
+	/** Theme scale for a dimension, without generated numeric entries so they resolve through --spacing */
+	const configuredScale = (dimension: 'width' | 'height'): Record<string, string> => {
+		if (!spacingUnit) return theme(dimension);
+
+		/** Whether a numeric entry was copied from the --spacing scale, rather than configured */
+		const isGenerated = (key: string, value: string) => {
+			/** The spacing value for each step
+			 * @example { 4: '1rem', px: '1px', … }
+			 * @remarks If --spacing is set without a scale, this is a string */
+			const scale: string | Record<string, string> = theme('spacing');
+
+			const defaults: Record<string, string> = defaultTheme.spacing;
+
+			// v4 builds width and height scales by spreading theme('spacing')
+			// If theme('spacing') is a string, this spreads each character into the scale
+			return value === (typeof scale === 'string' ? scale[Number(key)] : defaults[key]);
+		};
+
+		return Object.fromEntries(
+			Object.entries<string>(theme(dimension)).filter(
+				([key, value]) => !isMultiplier(key) || !isGenerated(key, value)
+			)
+		);
+	};
+
+	const width = configuredScale('width');
+	const height = configuredScale('height');
+
 	for (const dir in directions) {
 		const isVertical = ['t', 'b', 'y'].includes(dir);
 		const isHorizontal = ['l', 'r', 'x'].includes(dir);
@@ -131,13 +167,13 @@ const scrim: ReturnType<typeof plugin> = plugin(({ matchUtilities, addBase, them
 			{
 				values: (() => {
 					const spacing: Record<string, string> =
-						isVertical ? theme('height')
-						: isHorizontal ? theme('width')
+						isVertical ? height
+						: isHorizontal ? width
 							// DEFAULT : allow only values identical in both scale
 							// ie. scrim-x-screen → 100vw
 							//     scrim-y-screen → 100vh
 							//     scrim-screen → undefined
-						: (intersection(theme('width'), theme('height')) as Record<string, string>);
+						: (intersection(width, height) as Record<string, string>);
 
 					// Discard keywords incompatible with pseudo-element mask
 					const { auto, min, max, fit, ...values } = spacing;
@@ -150,7 +186,29 @@ const scrim: ReturnType<typeof plugin> = plugin(({ matchUtilities, addBase, them
 					if (max !== undefined && max !== 'max-content') keywords.max = max;
 					if (fit !== undefined && fit !== 'fit-content') keywords.fit = fit;
 
-					return { ...values, ...keywords };
+					return {
+						...values,
+						...keywords,
+
+						// Support dynamic values (eg. `scrim-b-13.5`, `scrim-b-3/7`)
+						...(spacingUnit && {
+							__BARE_VALUE__: ({ value, fraction }) => {
+								if (fraction) {
+									const [numerator, denominator] = fraction.split('/');
+
+									// Zero is rejected, as calc() would bypass zero distance detection
+									const isPositiveInteger = (value: string) => /^[1-9]\d*$/.test(value);
+
+									if (!isPositiveInteger(numerator) || !isPositiveInteger(denominator)) return;
+									return `calc(${numerator} / ${denominator} * 100%)`;
+								}
+
+								if (!isMultiplier(value)) return;
+								if (dir === 'DEFAULT' && width[value] !== height[value]) return;
+								return value === '0' ? '0px' : `--spacing(${value})`;
+							},
+						}),
+					};
 				})(),
 				type: ['length', 'percentage'],
 				supportsNegativeValues: false,

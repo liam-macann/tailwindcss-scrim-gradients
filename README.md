@@ -27,6 +27,7 @@ Gradient overlays (scrims) are a pattern employed to preserve legibility of text
 - Gradient easing subdues appearance of hard edges and luminance banding
 - Multiple edges can be specified with independent sizes
 - Use theme scales and arbitrary values for color and distances
+- Use dynamic utility values in Tailwind CSS v4 (eg. `scrim-b-13 scrim-x-2/8`)
 - Allows the use of opacity modifiers without stacking conflicts
 
 ## Installation

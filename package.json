@@ -36,6 +36,7 @@
 	"scripts": {
 		"test": "vitest run",
 		"build": "tsdown src/index.ts --format cjs --dts",
+		"format": "prettier --write .",
 		"prepublishOnly": "npm run build"
 	},
 	"peerDependencies": {
@@ -43,6 +44,7 @@
 	},
 	"devDependencies": {
 		"postcss": "^8.2.4",
+		"prettier": "^3.9.10",
 		"tailwindcss": "^3.0.0",
 		"tsdown": "^0.21.7",
 		"typescript": "^5.9.3",

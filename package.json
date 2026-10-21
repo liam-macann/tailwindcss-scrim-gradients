@@ -2,10 +2,17 @@
 	"name": "tailwindcss-scrim-gradients",
 	"description": "Generate beautiful gradient overlays with composable utilities.",
 	"author": "Liam Macann",
-	"version": "0.4.2",
+	"version": "1.0.0",
 	"source": "src/index.ts",
 	"main": "dist/index.cjs",
 	"types": "dist/index.d.cts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.cts",
+			"default": "./dist/index.cjs"
+		},
+		"./package.json": "./package.json"
+	},
 	"license": "MIT",
 	"keywords": [
 		"tailwind",

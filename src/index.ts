@@ -11,18 +11,31 @@ type ColorPalette = { [key: string]: Color | ColorPalette };
 
 const resolveColor = (value: Color): string => (typeof value === 'function' ? value({}) : value);
 
-const flattenColorPalette = (colors?: ColorPalette): Record<string, Color> =>
-	Object.assign(
-		{},
-		...Object.entries(colors !== null && colors !== void 0 ? colors : {}).flatMap(
-			([color, values]) =>
-				typeof values === 'object' ?
-					Object.entries(flattenColorPalette(values)).map(([number, hex]) => ({
-						[color + (number === 'DEFAULT' ? '' : `-${number}`)]: hex,
-					}))
-				:	[{ [`${color}`]: values }]
-		)
-	);
+// Mirrors upstream implementation
+function flattenColorPalette(colors?: ColorPalette | null): Record<string, Color> {
+	const ThemeOptions = { DEFAULT: 1 << 2 } as const;
+	const result: Record<string, Color> = {};
+
+	for (const [root, children] of Object.entries(colors ?? {})) {
+		if (root === '__CSS_VALUES__') continue;
+
+		if (children === null) continue; // Unlike upstream, null colors are dropped
+		if (typeof children === 'object') {
+			for (const [parent, value] of Object.entries(flattenColorPalette(children))) {
+				result[`${root}${parent === 'DEFAULT' ? '' : `-${parent}`}`] = value;
+			}
+		} else result[root] = children;
+	}
+
+	// Unlike upstream, a missing palette is tolerated
+	if (colors && '__CSS_VALUES__' in colors) {
+		for (const [key, value] of Object.entries(colors.__CSS_VALUES__)) {
+			if ((Number(value) & ThemeOptions.DEFAULT) === 0) result[key] = colors[key] as Color;
+		}
+	}
+
+	return result;
+}
 
 /** Returns the shallow intersection of two objects (comparing by reference) */
 const intersection = <T extends Record<string, unknown>>(a: T, b: T) =>

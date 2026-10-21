@@ -132,35 +132,6 @@ test('Opacity modifiers can be applied to color utilities', async () => {
 	}
 });
 
-test('Color functions are resolved', async () => {
-	// v3.0-style color function (both Tailwind versions can still pass these through)
-	const fn = (() => 'rgb(1 2 3)') as unknown as string;
-
-	const css = await generateCSS('scrim-fn scrim-nested-500', {
-		theme: { extend: { colors: { fn, nested: { 500: fn } } } },
-	});
-
-	expect(css).not.toContain('=>');
-	['.scrim-fn', '.scrim-nested-500'].forEach(selector => {
-		expect(css).toMatch(matchRuleFor(selector, '--tw-scrim-color', 'rgb(1 2 3)'));
-	});
-});
-
-test.skipIf(major !== 3)('Opacity modifiers can be applied to color functions', async () => {
-	// Supporting this in v4 would require version sniffing, and is exceedingly uncommon
-
-	const fn = ({ opacityValue }: { opacityValue?: string }) =>
-		opacityValue ? `rgb(1 2 3 / ${opacityValue})` : 'rgb(1 2 3)';
-
-	const css = await generateCSS('scrim-fn/50', {
-		// Type declaration omits supported legacy color callbacks
-		theme: { extend: { colors: { fn: fn as unknown as string } } },
-	});
-
-	expect(css).not.toContain('=>');
-	expect(css).toContain('--tw-scrim-color: rgb(1 2 3 / 0.5)');
-});
-
 test('Length and color utilities compose with extended theme', async () => {
 	const css = await generateCSS('scrim-primary scrim-secondary-500 scrim-b-arbitrary', {
 		theme: {
@@ -396,4 +367,73 @@ describe.skipIf(major !== 4)('Dynamic numeric spacing', () => {
 		test('Fractions of non-positive integers produce no output', async () =>
 			expect(await generateCSS('scrim-b-0/4 scrim-b-3/0 scrim-b-1.5/4 scrim-b-03/7')).toBe(''));
 	});
+});
+
+describe('Theme palettes resolve to color utilities', () => {
+	test('Color functions are resolved', async () => {
+		// v3.0-style color function (both Tailwind versions can still pass these through)
+		const fn = (() => 'rgb(1 2 3)') as unknown as string;
+
+		const css = await generateCSS('scrim-fn scrim-nested-500', {
+			theme: { extend: { colors: { fn, nested: { 500: fn } } } },
+		});
+
+		expect(css).not.toContain('=>');
+		['.scrim-fn', '.scrim-nested-500'].forEach(selector => {
+			expect(css).toMatch(matchRuleFor(selector, '--tw-scrim-color', 'rgb(1 2 3)'));
+		});
+	});
+
+	test.skipIf(major !== 3)('Opacity modifiers can be applied to color functions', async () => {
+		// Supporting this in v4 would require version sniffing, and is exceedingly uncommon
+
+		const fn = ({ opacityValue }: { opacityValue?: string }) =>
+			opacityValue ? `rgb(1 2 3 / ${opacityValue})` : 'rgb(1 2 3)';
+
+		const css = await generateCSS('scrim-fn/50', {
+			// Type declaration omits supported legacy color callbacks
+			theme: { extend: { colors: { fn: fn as unknown as string } } },
+		});
+
+		expect(css).not.toContain('=>');
+		expect(css).toContain('--tw-scrim-color: rgb(1 2 3 / 0.5)');
+	});
+
+	test.skipIf(major !== 4)('CSS theme takes precedence over JS config', async () => {
+		const css = await compileStyles(
+			`
+			@theme { --color-dup-500: red; }
+			@theme default { --color-def-500: red; }
+			@layer utilities { @tailwind utilities; }
+		`,
+			'scrim-dup-500 scrim-def-500',
+			{ theme: { extend: { colors: { dup: { 500: 'blue' }, def: { 500: 'blue' } } } } }
+		);
+
+		expect(css).toMatch(matchRuleFor('.scrim-dup-500', '--tw-scrim-color', 'red'));
+
+		// `@theme default` yields to config
+		expect(css).toMatch(matchRuleFor('.scrim-def-500', '--tw-scrim-color', 'blue'));
+	});
+
+	test('Missing and null colors are tolerated', async () => {
+		// Type declaration omits nullish colors
+		const colors = {
+			empty: null,
+			nothing: undefined,
+			nested: { 500: null },
+		} as unknown as Record<string, string>;
+
+		await expect(
+			generateCSS('scrim-nothing scrim-empty scrim-nested-500', { theme: { colors } })
+		).resolves.toBe('');
+
+		await expect(
+			generateCSS('scrim-t-4', { theme: { colors: undefined } }),
+			'Expected length utilities without a palette'
+		).resolves.toContain('--tw-scrim-mask-t');
+	});
+
+	test('Theme metadata does not produce color utilities', async () =>
+		expect(await generateCSS('scrim-__CSS_VALUES__-orange-500')).toBe(''));
 });

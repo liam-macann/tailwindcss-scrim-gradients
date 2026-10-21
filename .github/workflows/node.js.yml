@@ -5,27 +5,44 @@ name: Node.js CI
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ['main']
   pull_request:
-    branches: [ "main" ]
+    branches: ['main']
+  # Catch regressions from new Tailwind releases between pushes
+  schedule:
+    - cron: '0 6 * * 1'
 
 jobs:
   build:
+    name: Node ${{ matrix.node-version }}, Tailwind ${{ matrix.tailwind.version }}
 
     runs-on: ubuntu-latest
 
     strategy:
+      fail-fast: false
       matrix:
-        node-version: [20.x, 22.x, lts/*]
         # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
+        node-version: [22.x, lts/*]
+
+        # Oldest and newest of each major in the peer dependency range,
+        # installed over the dev dependency that each Vitest project imports
+        tailwind:
+          - { version: 3.0.0, package: tailwindcss-v3, project: tailwind-v3 }
+          - { version: 3.x, package: tailwindcss-v3, project: tailwind-v3 }
+          - { version: 4.0.0, package: tailwindcss, project: tailwind-v4 }
+          - { version: 4.x, package: tailwindcss, project: tailwind-v4 }
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v3
-      with:
-        node-version: ${{ matrix.node-version }}
-        cache: 'npm'
-    - run: npm ci
-    - run: npm run build --if-present
-    - run: npm test
+      - uses: actions/checkout@v4
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run build --if-present
+      - name: Install Tailwind ${{ matrix.tailwind.version }}
+        run: |
+          npm i --no-save ${{ matrix.tailwind.package }}@npm:tailwindcss@${{ matrix.tailwind.version }}
+          node -p "'Testing with tailwindcss ' + require('${{ matrix.tailwind.package }}/package.json').version"
+      - run: npm test -- --project ${{ matrix.tailwind.project }}

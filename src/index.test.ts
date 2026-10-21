@@ -1,31 +1,11 @@
-import postcss from 'postcss';
-import tw, { type Config } from 'tailwindcss';
 import { describe, expect, test } from 'vitest';
-import plugin from './index';
-
-const generateCSS = async (utilities: string, options?: Partial<Config>) =>
-	await postcss([
-		tw({
-			content: [{ raw: utilities }],
-			plugins: [plugin],
-			...options,
-		}),
-	])
-		.process('@tailwind utilities', { from: undefined })
-		.then(({ css }) => css);
+import { generateBase, generateCSS, version } from './test-utils';
 
 test('Base component styles are applied', async () => {
-	const { css } = await postcss([
-		tw({
-			// Suppress missing content warning
-			content: [{ raw: '' }],
-			plugins: [plugin],
-			corePlugins: [],
-		}),
-	]).process('@tailwind base', { from: undefined });
+	const css = await generateBase();
 
 	expect(css).toContain('[class^="scrim-"], [class*=" scrim-"]');
-	expect(css).toContain('[class^="scrim-"]::after, [class*=" scrim-"]::after');
+	expect(css).toContain('::after');
 	expect(css).toContain('content: ""');
 	expect(css).toContain('mask-image: var(');
 });
@@ -78,9 +58,16 @@ test('Opacity modifiers can be applied to color utilities', async () => {
 		},
 	});
 
-	expect(css).toContain('--tw-scrim-color: rgb(0 0 0 / 0.1)');
-	expect(css).toContain('--tw-scrim-color: rgb(255 0 0 / 0.2)');
-	expect(css).toContain('--tw-scrim-color: rgb(20 60 80 / 0.1)');
+	// v4 applies opacity with `color-mix()` rather than rewriting the color
+	if (version === 3) {
+		expect(css).toContain('--tw-scrim-color: rgb(0 0 0 / 0.1)');
+		expect(css).toContain('--tw-scrim-color: rgb(255 0 0 / 0.2)');
+		expect(css).toContain('--tw-scrim-color: rgb(20 60 80 / 0.1)');
+	} else {
+		expect(css).toContain('--tw-scrim-color: color-mix(in oklab, #000 10%, transparent)');
+		expect(css).toContain('--tw-scrim-color: color-mix(in oklab, red 20%, transparent)');
+		expect(css).toContain('--tw-scrim-color: color-mix(in oklab, rgb(20,60,80) 10%, transparent)');
+	}
 });
 
 test('Length and color utilities compose with extended theme', async () => {

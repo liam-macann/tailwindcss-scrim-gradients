@@ -1,9 +1,14 @@
 import plugin from 'tailwindcss/plugin';
-import type { CSSRuleObject } from 'tailwindcss/types/config';
 
-// Hacky workaround for edge cases involving opacity modifiers on custom colors
-type Color = string | ((...args: unknown[]) => string);
+// Stable CSS-in-JS type across Tailwind versions
+type CSSRuleObject = { [key: string]: string | CSSRuleObject };
+
+// Tailwind color definition can return functions (eg. for opacity modifiers on custom colors)
+// This was common prior to v3.1, and matches internally generated <alpha-value> callbacks
+type Color = string | ((options: Record<string, never>) => string);
 type ColorPalette = { [key: string]: Color | ColorPalette };
+
+const resolveColor = (value: Color): string => (typeof value === 'function' ? value({}) : value);
 
 const flattenColorPalette = (colors?: ColorPalette): Record<string, Color> =>
 	Object.assign(
@@ -69,7 +74,8 @@ const gradient = (direction: string, distance: string): string => {
 
 //-----------------------------------------------------------------------------
 
-const scrim = plugin(({ matchUtilities, addBase, theme }) => {
+// Published types resolve against the installed version
+const scrim: ReturnType<typeof plugin> = plugin(({ matchUtilities, addBase, theme }) => {
 	// Allow utility overrides (base layer allows raw CSS selector)
 	addBase({
 		'[class^="scrim-"], [class*=" scrim-"]': {
@@ -99,9 +105,10 @@ const scrim = plugin(({ matchUtilities, addBase, theme }) => {
 	});
 
 	matchUtilities(
-		{ scrim: value => ({ '--tw-scrim-color': value instanceof Function ? value() : value }) },
+		{ scrim: (value: Color) => ({ '--tw-scrim-color': resolveColor(value) }) },
 		{
-			values: flattenColorPalette(theme('colors')),
+			// v4 declares string values only, but we need to preserve legacy callbacks for v3.0 opacity handling
+			values: flattenColorPalette(theme('colors')) as Record<string, string>,
 			type: 'color',
 		}
 	);

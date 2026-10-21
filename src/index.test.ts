@@ -370,6 +370,26 @@ describe.skipIf(major !== 4)('Dynamic numeric spacing', () => {
 });
 
 describe('Theme palettes resolve to color utilities', () => {
+	test.skipIf(isOlderThan('3.1.0'))(
+		'Alpha placeholder resolves for opaque and modified colors',
+		async () => {
+			const options = {
+				theme: { extend: { colors: { alpha: 'rgb(var(--alpha) / <alpha-value>)' } } },
+			};
+
+			const css = await generateCSS('scrim-alpha scrim-alpha/45', options);
+
+			expect(css).not.toContain('<alpha-value>');
+			expect(css).toContain('--tw-scrim-color: rgb(var(--alpha) / 1)');
+
+			expect(css).toContain(
+				major === 3 ?
+					'--tw-scrim-color: rgb(var(--alpha) / 0.45)'
+				:	'--tw-scrim-color: color-mix(in oklab, rgb(var(--alpha) / 1) 45%, transparent)'
+			);
+		}
+	);
+
 	test('Color functions are resolved', async () => {
 		// v3.0-style color function (both Tailwind versions can still pass these through)
 		const fn = (() => 'rgb(1 2 3)') as unknown as string;

@@ -9,7 +9,10 @@ type CSSRuleObject = { [key: string]: string | CSSRuleObject };
 type Color = string | ((options: Record<string, never>) => string);
 type ColorPalette = { [key: string]: Color | ColorPalette };
 
-const resolveColor = (value: Color): string => (typeof value === 'function' ? value({}) : value);
+const resolveColor = (value: Color): string => {
+	const color = typeof value === 'function' ? value({}) : value;
+	return typeof color === 'string' ? color.replaceAll('<alpha-value>', '1') : color;
+};
 
 // Mirrors upstream implementation
 function flattenColorPalette(colors?: ColorPalette | null): Record<string, Color> {

@@ -1,13 +1,75 @@
 import { describe, expect, test } from 'vitest';
-import { generateBase, generateCSS, version } from './test-utils';
+import { compileStyles, generateBase, generateCSS, isOlderThan, major } from './test-utils';
 
-test('Base component styles are applied', async () => {
+const escapeRegex = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const matchRuleFor = (selector: string | RegExp, property: string, value: string) => {
+	const s = selector instanceof RegExp ? selector.source : escapeRegex(selector);
+
+	const block = `(?:^|[{};])\\s*${s}\\s*\\{`;
+	const declaration = `(?<=\\{|;)\\s*${escapeRegex(property)}\\s*:\\s*${escapeRegex(value)}`;
+
+	return new RegExp(`${block}[^}]*?${declaration}`);
+};
+
+describe('Edge utilities apply overlay', () => {
+	test.for(['scrim-t-4', 'hover:scrim-t-4', '*:scrim-t-4'])(
+		'Utility: %s',
+		async (utility, { skip }) => {
+			skip(utility.startsWith('*:') && isOlderThan('3.4.0'), 'The `*` variant was added in v3.4');
+
+			const css = await generateCSS(utility);
+
+			expect(css).toContain(`.${utility.replace(/[:*]/g, '\\$&')}`);
+			expect(css, 'Expected mask variable').toContain('mask-image: var(');
+			expect(css, 'Expected pseudo-element').toMatch(
+				matchRuleFor(/[^{};]+::after/, 'content', '""')
+			);
+
+			expect(css, 'Expected zero-specificity positioning').toMatch(
+				matchRuleFor(/:where\([^{}]+\)/, 'position', 'relative')
+			);
+		}
+	);
+
+	test('Important modifier applies to overlay and positioning', async () => {
+		const css = await generateCSS(major === 3 ? '!scrim-t-4' : 'scrim-t-4!');
+		expect(css).toContain('content: "" !important');
+		expect(css).toContain('position: relative !important');
+	});
+
+	test('Color utilities do not apply overlay', async () => {
+		const css = await generateCSS('scrim-black');
+		expect(css).not.toContain('::after');
+		expect(css).not.toContain('position:');
+	});
+});
+
+test('Base styles reset mask variables, preventing inheritance', async () => {
 	const css = await generateBase();
 
-	expect(css).toContain('[class^="scrim-"], [class*=" scrim-"]');
-	expect(css).toContain('::after');
-	expect(css).toContain('content: ""');
-	expect(css).toContain('mask-image: var(');
+	expect(css).toMatch(matchRuleFor('*', '--tw-scrim-mask-l', 'initial'));
+	expect(css).not.toContain('::after');
+	expect(css).not.toContain('position:');
+});
+
+test('Position can be overridden', async () => {
+	const css = await generateCSS('scrim-t-4 absolute');
+
+	expect(css).toMatch(matchRuleFor(/:where\([^)]*\)/, 'position', 'relative'));
+	expect(css).toContain('position: absolute');
+	expect(css).not.toContain('!important');
+});
+
+test('Scrim can be added with @apply directive', async () => {
+	const css = await compileStyles(`
+		@tailwind utilities;
+		.card { @apply scrim-b-12; }
+	`);
+
+	expect(css).toMatch(matchRuleFor(/:where\([^{}]+\)/, 'position', 'relative'));
+	expect(css).toContain('--tw-scrim-mask-b:');
+	expect(css, 'Expected pseudo-element').toMatch(matchRuleFor(/[^{};]+::after/, 'content', '""'));
 });
 
 describe('Default, edges, and shorthand axes are defined', () => {
@@ -59,7 +121,7 @@ test('Opacity modifiers can be applied to color utilities', async () => {
 	});
 
 	// v4 applies opacity with `color-mix()` rather than rewriting the color
-	if (version === 3) {
+	if (major === 3) {
 		expect(css).toContain('--tw-scrim-color: rgb(0 0 0 / 0.1)');
 		expect(css).toContain('--tw-scrim-color: rgb(255 0 0 / 0.2)');
 		expect(css).toContain('--tw-scrim-color: rgb(20 60 80 / 0.1)');
@@ -79,10 +141,12 @@ test('Color functions are resolved', async () => {
 	});
 
 	expect(css).not.toContain('=>');
-	expect(css.match(/--tw-scrim-color: rgb\(1 2 3\)/g)).toHaveLength(2);
+	['.scrim-fn', '.scrim-nested-500'].forEach(selector => {
+		expect(css).toMatch(matchRuleFor(selector, '--tw-scrim-color', 'rgb(1 2 3)'));
+	});
 });
 
-test.skipIf(version !== 3)('Opacity modifiers can be applied to color functions', async () => {
+test.skipIf(major !== 3)('Opacity modifiers can be applied to color functions', async () => {
 	// Supporting this in v4 would require version sniffing, and is exceedingly uncommon
 
 	const fn = ({ opacityValue }: { opacityValue?: string }) =>
@@ -271,7 +335,7 @@ describe('Zero dimension edges do not render pixel-width gradient', () => {
 		const css = await generateCSS(`scrim-b-[${length}]`);
 
 		// v4 infers unitless arbitrary values as numbers, not lengths
-		if (version === 4 && length === '0') expect(css).toBe('');
+		if (major === 4 && length === '0') expect(css).toBe('');
 		else expect(css).toContain(maskVar('b'));
 	});
 

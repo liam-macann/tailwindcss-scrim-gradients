@@ -74,29 +74,33 @@ const gradient = (direction: string, distance: string): string => {
 
 //-----------------------------------------------------------------------------
 
+// Emitted with each edge utility, so Tailwind generates the selectors (variants, prefixes, etc.)
+// Compression handles the duplication in output CSS
+const overlay: CSSRuleObject = {
+	// Zero-specificity so explicit positioning utilities can override
+	':where(&)': { position: 'relative' },
+
+	'&::after': {
+		content: '""',
+		position: 'absolute',
+		inset: '0',
+		pointerEvents: 'none',
+		background: 'var(--tw-scrim-color, white)',
+		maskImage: `
+			var(--tw-scrim-mask-l, linear-gradient(transparent, transparent)),
+			var(--tw-scrim-mask-r, linear-gradient(transparent, transparent)),
+			var(--tw-scrim-mask-t, linear-gradient(transparent, transparent)),
+			var(--tw-scrim-mask-b, linear-gradient(transparent, transparent))`.trim(),
+		maskRepeat: 'no-repeat',
+	},
+};
+
 // Published types resolve against the installed version
 const scrim: ReturnType<typeof plugin> = plugin(({ matchUtilities, addBase, theme }) => {
-	// Allow utility overrides (base layer allows raw CSS selector)
 	addBase({
-		'[class^="scrim-"], [class*=" scrim-"]': {
-			position: 'relative',
-			'&::after': {
-				content: '""',
-				position: 'absolute',
-				inset: '0',
-				pointerEvents: 'none',
-				background: 'var(--tw-scrim-color, white)',
-				maskImage: `
-      		var(--tw-scrim-mask-l, linear-gradient(transparent, transparent)),
-      		var(--tw-scrim-mask-r, linear-gradient(transparent, transparent)),
-      		var(--tw-scrim-mask-t, linear-gradient(transparent, transparent)),
-      		var(--tw-scrim-mask-b, linear-gradient(transparent, transparent))`.trim(),
-				maskRepeat: 'no-repeat',
-			},
-		},
-		// Prevents mask variables from being inherited
-		// (`:where()` specificity is 0, and can be overridden with utilities)
-		':where([class^="scrim-"], [class*=" scrim-"])': {
+		// Prevents mask variables from being inherited by descendants
+		// (does not match pseudo-elements, so each overlay still inherits from its element)
+		'*': {
 			'--tw-scrim-mask-l': 'initial',
 			'--tw-scrim-mask-r': 'initial',
 			'--tw-scrim-mask-t': 'initial',
@@ -119,7 +123,10 @@ const scrim: ReturnType<typeof plugin> = plugin(({ matchUtilities, addBase, them
 
 		matchUtilities(
 			{
-				[dir === 'DEFAULT' ? 'scrim' : `scrim-${dir}`]: value => mask(dir, directions[dir], value),
+				[dir === 'DEFAULT' ? 'scrim' : `scrim-${dir}`]: value => ({
+					...mask(dir, directions[dir], value),
+					...overlay,
+				}),
 			},
 			{
 				values: (() => {

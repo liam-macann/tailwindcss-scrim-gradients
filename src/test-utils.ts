@@ -7,12 +7,21 @@ import type v3Plugin from 'tailwindcss-v3/plugin';
 import plugin from './index';
 
 /** Major Tailwind CSS version being tested test, set per Vitest project */
-export const version = process.env.TAILWIND_VERSION === '3' ? 3 : 4;
+export const major = process.env.TAILWIND_VERSION === '3' ? 3 : 4;
 
 /** A partial configuration, in v3-style JavaScript format */
 type Options = Partial<Config>;
 
 const require = createRequire(import.meta.url);
+
+/** Exact Tailwind CSS version installed, for the major being tested */
+export const version: string = require(
+	`${major === 3 ? 'tailwindcss-v3' : 'tailwindcss'}/package.json`
+).version;
+
+/** Whether the installed Tailwind CSS version is older than `target` */
+export const isOlderThan = (target: string) =>
+	version.localeCompare(target, undefined, { numeric: true }) < 0;
 
 /** Compile CSS from input for Tailwind v3 */
 const compile3 = (input: string, classes: string, options?: Options) =>
@@ -56,11 +65,15 @@ const compile4 = async (input: string, classes: string, options: Options = {}) =
 	return compiler.build(classes.split(/\s+/).filter(Boolean));
 };
 
+/** Compile custom CSS with utility candidates and shared theme configuration. */
+export const compileStyles = (input: string, classes: string = '', options?: Options) =>
+	major === 3 ? compile3(input, classes, options) : compile4(input, classes, options);
+
 /** Generates the contents of one layer, so tests can assert on empty output */
 const generateLayer = async (layer: 'base' | 'utilities', classes: string, options?: Options) => {
-	if (version === 3) return compile3(`@tailwind ${layer}`, classes, options);
+	if (major === 3) return compileStyles(`@tailwind ${layer}`, classes, options);
 
-	const css = await compile4('@layer utilities { @tailwind utilities; }', classes, options);
+	const css = await compileStyles('@layer utilities { @tailwind utilities; }', classes, options);
 
 	// v4 doesn't separate layers into directives. We parse and extract only the requested layer
 	const node = postcss

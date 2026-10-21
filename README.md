@@ -1,4 +1,3 @@
-
 <h1 align='center'>tailwindcss scrim gradients</h1>
 
 <p align="center">
@@ -32,30 +31,23 @@ Gradient overlays (scrims) are a pattern employed to preserve legibility of text
 
 ## Installation
 
-Simply install and register the plugin, according to the version of `tailwindcss` used.
+Simply install and register the plugin. The package supports both Tailwind v3 and v4 simultaneously.
 
 ```sh
 npm i -D tailwindcss-scrim-gradients
 ```
 
-### Tailwind v4
-
 ```css
-/* global.css */
+/* theme.css */
 @plugin "tailwindcss-scrim-gradients";
 ```
-
-### Tailwind v3
 
 ```js
 // tailwind.config.js
 module.exports = {
-	theme: {
-		// ...
-	},
 	plugins: [
-		require('tailwindcss-scrim-gradients'),
 		// ...
+		require('tailwindcss-scrim-gradients'),
 	],
 };
 ```
@@ -74,8 +66,18 @@ Shorthand utilities can be applied, and overridden on any edge.
 <div class="scrim-12 scrim-b-1/4" />
 ```
 
+Multi-color scrims may be produced through composition of DOM nodes, or by applying a gradient background directly to the pseudo-element.
+
+```html
+<!-- Define a color on the parent node -->
+<div class="scrim-red-500 scrim-t-40">
+	<!-- And apply a new scrim in a child -->
+	<div class="scrim-yellow-500 scrim-b-1/2" />
+</div>
+```
+
 ### Caveats
 
-This plugin uses `::after` to position the overlay, and cannot be used with the respective Tailwind pseudo-element variants. This also means that the containing element will default to relative positioning.
+This plugin uses `::after` to position the overlay, and cannot be used with pseudo-element variants. This also means that the containing element will default to relative positioning, although this may be overridden. If the scrim utility uses an important modifier, the positioning override must also be important: `scrim-b-12! absolute!`.
 
-Gradient stacking is achieved through mask-image, which has [good browser support](https://caniuse.com/mdn-css_properties_mask-image) when used with vendor prefixing. If you use Tailwind, you can use this.
+Gradient stacking is achieved through mask-image, which has [good browser support](https://caniuse.com/mdn-css_properties_mask-image).
